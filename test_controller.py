@@ -65,7 +65,7 @@ def test_bucket_move_down_success():
     response = controller.send_command(CommandAction.BUCKET_MOVE_DOWN.value)
 
     assert response.status == CommandStatus.OK
-    assert response.message == f"BUCKET SUCCESFULLY SET TO POSITION: {BucketPosition.BUCKET_DOWN}"
+    assert response.message == f"BUCKET SUCCESFULLY SET TO POSITION: {BucketPosition.BUCKET_DOWN.value}"
     assert controller.bucket_position == BucketPosition.BUCKET_DOWN
 
 def test_bucket_move_down_speed_fail():
@@ -94,7 +94,7 @@ def test_bucket_move_up_sucess():
     response = controller.send_command(CommandAction.BUCKET_MOVE_UP.value)
 
     assert response.status == CommandStatus.OK
-    assert response.message == f"BUCKET SUCCESFULLY SET TO POSITION: {BucketPosition.BUCKET_UP}"
+    assert response.message == f"BUCKET SUCCESFULLY SET TO POSITION: {BucketPosition.BUCKET_UP.value}"
     assert controller.bucket_position == BucketPosition.BUCKET_UP
 
 def test_bucket_move_up_speed_fail():
@@ -137,9 +137,9 @@ def test_temp_set_over_max():
     response = controller.send_command(f"{CommandAction.TEMP_SET.value} {temp}")
 
     assert response.status == CommandStatus.WARNING
-    assert response.message == f"TEMPERATURE: {controller.temperature} IS GREATER THAN MAX RECOMMENDED TEMP: {MAX_TEMP}"
+    assert response.message == f"TEMPERATURE WAS SET TO: {controller.temperature} BUT IS GREATER THAN MAX RECOMMENDED TEMP: {MAX_TEMP}"
     assert controller.temperature == temp
-
+    
 def test_no_command_error():
     controller = MachineController()
 
@@ -147,6 +147,13 @@ def test_no_command_error():
 
     assert response.status == CommandStatus.ERROR
     assert response.message == "UNKNOWN COMMAND"
+
+def test_empty_command_error():
+    controller = MachineController()
+    response = controller.send_command("")
+
+    assert response.status == CommandStatus.ERROR
+    assert response.message == "EMPTY COMMAND"
 
 def test_get_machine_status():
           controller = MachineController()
@@ -157,7 +164,7 @@ def test_get_machine_status():
           "engine_running": controller.engine_running,
           "speed": controller.engine_speed,
           "temperature": controller.temperature,
-          "bucket_position": controller.bucket_position,
+          "bucket_position": controller.bucket_position.value,
           "warning": controller.warning,
           "warning_message": controller.warning_message
           }
