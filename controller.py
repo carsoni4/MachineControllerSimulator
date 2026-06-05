@@ -116,16 +116,15 @@ class MachineController:
 
         if self.temperature > MAX_TEMP:
             self.warning = True
-            self.warning_message = f"{CommandAction.TEMP_SET} HIT MAX TEMP"
+            self.warning_message = f"{CommandAction.TEMP_SET.value} HIT MAX TEMP"
 
             return CommandResponse(
                 CommandStatus.WARNING,
                 f"TEMPERATURE WAS SET TO: {self.temperature} BUT IS GREATER THAN MAX RECOMMENDED TEMP: {MAX_TEMP}",
             )
-        
-        if self.temperature < MAX_TEMP:
-            self.warning = False
-            self.warning_message = ""
+
+        self.warning = False
+        self.warning_message = ""
         
         return CommandResponse(
             CommandStatus.OK, f"TEMPERATURE SET TO: {temp} SUCCESFULLY"
@@ -143,6 +142,5 @@ class MachineController:
             return CommandResponse(CommandStatus.ERROR, "UNKNOWN COMMAND")
 
         handler = self.command_handler.get(action)
-        if handler is None:
-            return CommandResponse(CommandStatus.ERROR, "UNKNOWN COMMAND")    
+ 
         return handler(parts)
