@@ -138,14 +138,18 @@ Run line and branch coverage:
 pytest -v --cov=controller --cov-branch --cov-report=term-missing
 ```
 
-Example coverage result:
+Current Coverage result:
 
 ```text
-Name            Stmts   Miss Branch BrPart  Cover
--------------------------------------------------
-controller.py      67      0     22      0   100%
--------------------------------------------------
-TOTAL              67      0     22      0   100%
+======================================== tests coverage =========================================
+________________________ coverage: platform linux, python 3.12.3-final-0 ________________________
+
+Name            Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------
+controller.py      84      0     10      0   100%
+-----------------------------------------------------------
+TOTAL              84      0     10      0   100%
+====================================== 18 passed in 0.16s =======================================
 ```
 
 ## What the Tests Cover
