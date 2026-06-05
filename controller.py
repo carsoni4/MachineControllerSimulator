@@ -1,6 +1,7 @@
 from enum import Enum
 from dataclasses import dataclass
-from  datetime import datetime
+from datetime import datetime
+from collections import deque
 
 MAX_BUCKET_SPEED = 10
 MAX_TEMP = 100
@@ -25,10 +26,12 @@ class BucketPosition(Enum):
     BUCKET_DOWN = "BUCKET_DOWN"
     BUCKET_UP = "BUCKET_UP"
 
+
 @dataclass(frozen=True)
 class CommandResponse:
     status: CommandStatus
     message: str
+
 
 class MachineController:
     def __init__(self):
@@ -39,19 +42,47 @@ class MachineController:
         self.warning = False
         self.warning_message = ""
         self.log_file = "command_history.log"
+        self.command_queue = deque()
 
         self.command_handler = {
-            CommandAction.ENGINE_START : self._handle_engine_start,
-            CommandAction.ENGINE_STOP : self._handle_engine_stop,
-            CommandAction.ENGINE_SPEED_SET : self._handle_engine_speed_set,
-            CommandAction.BUCKET_MOVE_UP : self._handle_bucket_move_up,
-            CommandAction.BUCKET_MOVE_DOWN : self._handle_bucket_move_down,
-            CommandAction.TEMP_SET : self._handle_set_temp
+            CommandAction.ENGINE_START: self._handle_engine_start,
+            CommandAction.ENGINE_STOP: self._handle_engine_stop,
+            CommandAction.ENGINE_SPEED_SET: self._handle_engine_speed_set,
+            CommandAction.BUCKET_MOVE_UP: self._handle_bucket_move_up,
+            CommandAction.BUCKET_MOVE_DOWN: self._handle_bucket_move_down,
+            CommandAction.TEMP_SET: self._handle_set_temp,
         }
+
+    def queue_command(self, command: str) -> CommandResponse:
+        if not command.strip():
+            return CommandResponse(CommandStatus.ERROR, "EMPTY COMMAND")
+        self.command_queue.append(command)
+        response = CommandResponse(CommandStatus.OK, f"COMMAND: {command} WAS ADDED TO QUEUE")
+        self._log_command(command, response)
+        return response
+
+    def process_next_command(self) -> CommandResponse:
+        if not self.command_queue:
+            return CommandResponse(CommandStatus.ERROR, "COMMAND QUEUE EMPTY")
+        
+        command = self.command_queue.popleft()
+        response = self.send_command(command)
+        return response
+    
+    def process_all_commands(self) -> list[CommandResponse]:
+        listOfResponses = []
+
+        if not self.command_queue:
+            return CommandResponse(CommandStatus.ERROR, "COMMAND QUEUE EMPTY")
+
+        while self.command_queue:
+            listOfResponses.append(self.process_next_command())
+        
+        return listOfResponses
 
     def _log_command(self, command: str, response: CommandResponse):
         log_entry = (
-            f"{datetime.now().isoformat()} | " #iso to prevent timezone issues
+            f"{datetime.now().isoformat()} | "  # iso to prevent timezone issues
             f"COMMAND: {command} | "
             f"STATUS: {response.status.value} | "
             f"MESSAGE: {response.message}\n"
@@ -70,13 +101,13 @@ class MachineController:
             "warning_message": self.warning_message,
         }
 
-    def _move_bucket(self, position : BucketPosition):
+    def _move_bucket(self, position: BucketPosition):
         if self.engine_speed > MAX_BUCKET_SPEED:
-                return CommandResponse(
-                    CommandStatus.ERROR,
-                    f"CAN NOT MOVE BUCKET AS CURRENT SPEED: {self.engine_speed} IS GREATER THAN MAX BUCKET SPEED: {MAX_BUCKET_SPEED}",
-                )
-        
+            return CommandResponse(
+                CommandStatus.ERROR,
+                f"CAN NOT MOVE BUCKET AS CURRENT SPEED: {self.engine_speed} IS GREATER THAN MAX BUCKET SPEED: {MAX_BUCKET_SPEED}",
+            )
+
         self.bucket_position = position
         return CommandResponse(
             CommandStatus.OK,
@@ -97,21 +128,21 @@ class MachineController:
             return CommandResponse(
                 CommandStatus.ERROR, "ENGINE NOT RUNNING, CANT SET SPEED"
             )
-            
+
         try:
             engineSpeed = int(parts[1])
         except (IndexError, ValueError):
-            return CommandResponse(CommandStatus.ERROR, "INVALID ARGUMENTS FOR ENGINE SPEED")
-            
+            return CommandResponse(
+                CommandStatus.ERROR, "INVALID ARGUMENTS FOR ENGINE SPEED"
+            )
+
         if engineSpeed < 0:
             return CommandResponse(
                 CommandStatus.ERROR, "ENGINE SPEED CAN NOT BE NEGATIVE"
             )
 
         self.engine_speed = engineSpeed
-        return CommandResponse(
-            CommandStatus.OK, f"ENGINE SPEED SET TO {engineSpeed}"
-        )
+        return CommandResponse(CommandStatus.OK, f"ENGINE SPEED SET TO {engineSpeed}")
 
     def _handle_bucket_move_up(self, parts):
         return self._move_bucket(BucketPosition.BUCKET_UP)
@@ -122,9 +153,11 @@ class MachineController:
     def _handle_set_temp(self, parts):
         try:
             temp = int(parts[1])
-        except(IndexError, ValueError):
-            return CommandResponse(CommandStatus.ERROR, "INVALID ARGUMENTS FOR TEMP_SET")
-            
+        except (IndexError, ValueError):
+            return CommandResponse(
+                CommandStatus.ERROR, "INVALID ARGUMENTS FOR TEMP_SET"
+            )
+
         self.temperature = temp
 
         if self.temperature > MAX_TEMP:
@@ -138,7 +171,7 @@ class MachineController:
 
         self.warning = False
         self.warning_message = ""
-        
+
         return CommandResponse(
             CommandStatus.OK, f"TEMPERATURE SET TO: {temp} SUCCESFULLY"
         )
@@ -146,21 +179,21 @@ class MachineController:
     def send_command(self, command: str):
         parts = command.split()
         if len(parts) == 0:
-            empty_reponse = CommandResponse(CommandStatus.ERROR, "EMPTY COMMAND")
-            self._log_command(empty_reponse.message, empty_reponse)
-            return empty_reponse
+            empty_response = CommandResponse(CommandStatus.ERROR, "EMPTY COMMAND")
+            self._log_command(command, empty_response)
+            return empty_response
         actionStr = parts[0]
-
-        try: 
+        
+        try:
             action = CommandAction(actionStr)
         except ValueError:
-            unknown_reponse = CommandResponse(CommandStatus.ERROR, "UNKNOWN COMMAND")
-            self._log_command(unknown_reponse.message, unknown_reponse)
-            return unknown_reponse
+            unknown_response = CommandResponse(CommandStatus.ERROR, "UNKNOWN COMMAND")
+            self._log_command(unknown_response.message, unknown_response)
+            return unknown_response
 
         handler = self.command_handler.get(action)
-        
-        response : CommandResponse = handler(parts) #execute
-        self._log_command(actionStr, response) #log
-        
+
+        response: CommandResponse = handler(parts)  # execute
+        self._log_command(command, response)  # log
+
         return response
