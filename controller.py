@@ -1,5 +1,6 @@
 from enum import Enum
 from dataclasses import dataclass
+from  datetime import datetime
 
 MAX_BUCKET_SPEED = 10
 MAX_TEMP = 100
@@ -37,6 +38,7 @@ class MachineController:
         self.bucket_position = BucketPosition.BUCKET_UP
         self.warning = False
         self.warning_message = ""
+        self.log_file = "command_history.log"
 
         self.command_handler = {
             CommandAction.ENGINE_START : self._handle_engine_start,
@@ -46,6 +48,17 @@ class MachineController:
             CommandAction.BUCKET_MOVE_DOWN : self._handle_bucket_move_down,
             CommandAction.TEMP_SET : self._handle_set_temp
         }
+
+    def _log_command(self, command: str, response: CommandResponse):
+        log_entry = (
+            f"{datetime.now().isoformat()} | " #iso to prevent timezone issues
+            f"COMMAND: {command} | "
+            f"STATUS: {response.status.value} | "
+            f"MESSAGE: {response.message}\n"
+        )
+
+        with open(self.log_file, "a") as file:
+            file.write(log_entry)
 
     def get_machine_status(self):
         return {
@@ -133,14 +146,21 @@ class MachineController:
     def send_command(self, command: str):
         parts = command.split()
         if len(parts) == 0:
-            return CommandResponse(CommandStatus.ERROR, "EMPTY COMMAND")
+            empty_reponse = CommandResponse(CommandStatus.ERROR, "EMPTY COMMAND")
+            self._log_command(empty_reponse.message, empty_reponse)
+            return empty_reponse
         actionStr = parts[0]
 
         try: 
             action = CommandAction(actionStr)
         except ValueError:
-            return CommandResponse(CommandStatus.ERROR, "UNKNOWN COMMAND")
+            unknown_reponse = CommandResponse(CommandStatus.ERROR, "UNKNOWN COMMAND")
+            self._log_command(unknown_reponse.message, unknown_reponse)
+            return unknown_reponse
 
         handler = self.command_handler.get(action)
- 
-        return handler(parts)
+        
+        response : CommandResponse = handler(parts) #execute
+        self._log_command(actionStr, response) #log
+        
+        return response

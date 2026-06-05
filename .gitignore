@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Command Logs
+command_history.log
+
 # Distribution / packaging
 .Python
 build/
