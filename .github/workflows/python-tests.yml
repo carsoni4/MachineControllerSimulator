@@ -26,4 +26,4 @@ jobs:
 
       - name: Run tests with branch coverage
         run: |
-          pytest -v --cov=controller --cov-branch --cov-report=term-missing
+          pytest -v --cov=machine_controller --cov-branch --cov-report=term-missingclear
