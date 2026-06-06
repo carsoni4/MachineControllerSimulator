@@ -1,13 +1,11 @@
-from controller import MachineController
-from controller import CommandAction
-from controller import CommandStatus
-from controller import BucketPosition
-from controller import MAX_BUCKET_SPEED
-from controller import MAX_TEMP
+from machine_controller.controller import MachineController
+from machine_controller.enums import BucketPosition, CommandAction, CommandStatus
+from machine_controller.constants import MAX_BUCKET_SPEED, MAX_TEMP
 
 def test_queue_command():
     controller = MachineController()
     response = controller.queue_command(CommandAction.ENGINE_START.value)
+    
     assert response.status == CommandStatus.OK
     assert response.message == f"COMMAND: {CommandAction.ENGINE_START.value} WAS ADDED TO QUEUE"
     assert controller.engine_running == False
@@ -27,8 +25,8 @@ def test_empty_queue_process():
 def test_empty_queue_process_all():
     controller = MachineController()
     response = controller.process_all_commands()
-    assert response.status == CommandStatus.ERROR
-    assert response.message == "COMMAND QUEUE EMPTY"
+    assert response[0].status == CommandStatus.ERROR
+    assert response[0].message == "COMMAND QUEUE EMPTY"
 
 def test_process_next_command():
     controller = MachineController()

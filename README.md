@@ -122,34 +122,30 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-## Running Tests
-
-Run the full test suite:
-
-```bash
-pytest -v
-```
-
-## Running Coverage
+## Running Tests With Coverage
 
 Run line and branch coverage:
 
 ```bash
-pytest -v --cov=controller --cov-branch --cov-report=term-missing
+pytest -v --cov=machine_controller --cov-branch --cov-report=term-missing
 ```
 
 Current Coverage result:
 
 ```text
-======================================== tests coverage =========================================
-________________________ coverage: platform linux, python 3.12.3-final-0 ________________________
-
-Name            Stmts   Miss Branch BrPart  Cover   Missing
------------------------------------------------------------
-controller.py      84      0     10      0   100%
------------------------------------------------------------
-TOTAL              84      0     10      0   100%
-====================================== 18 passed in 0.16s =======================================
+============================================================ tests coverage 
+____________________________________________ coverage: platform linux, python 3.12.3-final-0 
+Name                               Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------
+machine_controller/__init__.py         0      0      0      0   100%
+machine_controller/constants.py        3      0      0      0   100%
+machine_controller/controller.py      95      0     18      0   100%
+machine_controller/enums.py           15      0      0      0   100%
+machine_controller/logger.py           9      0      0      0   100%
+machine_controller/models.py           6      0      0      0   100%
+------------------------------------------------------------------------------
+TOTAL                                128      0     18      0   100%
+========================================================== 24 passed in 0.23s 
 ```
 
 ## What the Tests Cover
@@ -167,21 +163,18 @@ The automated tests cover:
 * Triggering high-temperature warnings
 * Returning machine status
 * Handling unknown commands
+* Handling command interactions with queue
 
 ## Example Test
 
 ```python
-def test_engine_set_speed_engine_running():
+def test_queue_command():
     controller = MachineController()
-
-    speed = 10
-
-    controller.send_command(CommandAction.ENGINE_START.value)
-    response = controller.send_command(f"{CommandAction.ENGINE_SPEED_SET.value} {speed}")
-
+    response = controller.queue_command(CommandAction.ENGINE_START.value)
+    
     assert response.status == CommandStatus.OK
-    assert response.message == f"ENGINE SPEED SET TO {speed}"
-    assert controller.engine_speed == speed
+    assert response.message == f"COMMAND: {CommandAction.ENGINE_START.value} WAS ADDED TO QUEUE"
+    assert controller.engine_running == False
 ```
 
 ## Key Concepts Practiced

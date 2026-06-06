@@ -1,37 +1,8 @@
-from enum import Enum
-from dataclasses import dataclass
-from datetime import datetime
 from collections import deque
-
-MAX_BUCKET_SPEED = 10
-MAX_TEMP = 100
-
-
-class CommandStatus(Enum):
-    OK = "OK"
-    ERROR = "ERROR"
-    WARNING = "WARNING"
-
-
-class CommandAction(Enum):
-    ENGINE_START = "ENGINE_START"
-    ENGINE_STOP = "ENGINE_STOP"
-    ENGINE_SPEED_SET = "ENGINE_SPEED_SET"
-    BUCKET_MOVE_DOWN = "BUCKET_MOVE_DOWN"
-    BUCKET_MOVE_UP = "BUCKET_MOVE_UP"
-    TEMP_SET = "TEMP_SET"
-
-
-class BucketPosition(Enum):
-    BUCKET_DOWN = "BUCKET_DOWN"
-    BUCKET_UP = "BUCKET_UP"
-
-
-@dataclass(frozen=True)
-class CommandResponse:
-    status: CommandStatus
-    message: str
-
+from .enums import CommandAction, CommandStatus, BucketPosition
+from .models import CommandResponse
+from .constants import MAX_BUCKET_SPEED, MAX_TEMP, LOG_FILE
+from .logger import CommandLogger
 
 class MachineController:
     def __init__(self):
@@ -41,8 +12,9 @@ class MachineController:
         self.bucket_position = BucketPosition.BUCKET_UP
         self.warning = False
         self.warning_message = ""
-        self.log_file = "command_history.log"
+
         self.command_queue = deque()
+        self.logger = CommandLogger(LOG_FILE)
 
         self.command_handler = {
             CommandAction.ENGINE_START: self._handle_engine_start,
@@ -58,7 +30,7 @@ class MachineController:
             return CommandResponse(CommandStatus.ERROR, "EMPTY COMMAND")
         self.command_queue.append(command)
         response = CommandResponse(CommandStatus.OK, f"COMMAND: {command} WAS ADDED TO QUEUE")
-        self._log_command(command, response)
+        self.logger.log(command, response)
         return response
 
     def process_next_command(self) -> CommandResponse:
@@ -73,23 +45,12 @@ class MachineController:
         listOfResponses = []
 
         if not self.command_queue:
-            return CommandResponse(CommandStatus.ERROR, "COMMAND QUEUE EMPTY")
+            return [CommandResponse(CommandStatus.ERROR, "COMMAND QUEUE EMPTY")]
 
         while self.command_queue:
             listOfResponses.append(self.process_next_command())
         
         return listOfResponses
-
-    def _log_command(self, command: str, response: CommandResponse):
-        log_entry = (
-            f"{datetime.now().isoformat()} | "  # iso to prevent timezone issues
-            f"COMMAND: {command} | "
-            f"STATUS: {response.status.value} | "
-            f"MESSAGE: {response.message}\n"
-        )
-
-        with open(self.log_file, "a") as file:
-            file.write(log_entry)
 
     def get_machine_status(self):
         return {
@@ -180,7 +141,7 @@ class MachineController:
         parts = command.split()
         if len(parts) == 0:
             empty_response = CommandResponse(CommandStatus.ERROR, "EMPTY COMMAND")
-            self._log_command(command, empty_response)
+            self.logger.log(command, empty_response)
             return empty_response
         actionStr = parts[0]
         
@@ -188,12 +149,12 @@ class MachineController:
             action = CommandAction(actionStr)
         except ValueError:
             unknown_response = CommandResponse(CommandStatus.ERROR, "UNKNOWN COMMAND")
-            self._log_command(unknown_response.message, unknown_response)
+            self.logger.log(unknown_response.message, unknown_response)
             return unknown_response
 
         handler = self.command_handler.get(action)
 
         response: CommandResponse = handler(parts)  # execute
-        self._log_command(command, response)  # log
+        self.logger.log(command, response)  # log
 
         return response
