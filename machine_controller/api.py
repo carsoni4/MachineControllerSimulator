@@ -17,6 +17,10 @@ def response_to_dict(response: CommandResponse) -> dict:
         "message" : response.message
     }
 
+@app.get("/")
+def alive():
+    return {"message": "Hi from Carson! Machine Controller API is running!"}
+
 @app.get("/status")
 def get_status():
     return controller.get_machine_status()
