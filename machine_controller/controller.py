@@ -9,7 +9,7 @@ class MachineController:
     def __init__(self):
         self.engine_running = False
         self.engine_speed = 0
-        self.temperature = 70
+        self.temperature = 0
         self.bucket_position = BucketPosition.BUCKET_UP
         self.warning = False
         self.warning_message = ""
