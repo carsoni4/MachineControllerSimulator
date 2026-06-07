@@ -4,6 +4,7 @@ from .models import CommandResponse
 from .constants import MAX_BUCKET_SPEED, MAX_TEMP, LOG_FILE
 from .logger import CommandLogger
 
+
 class MachineController:
     def __init__(self):
         self.engine_running = False
@@ -25,31 +26,60 @@ class MachineController:
             CommandAction.TEMP_SET: self._handle_set_temp,
         }
 
+    def send_command(self, command: str):
+        parts = command.split()
+        if len(parts) == 0:
+            empty_response = CommandResponse(CommandStatus.ERROR, "EMPTY COMMAND")
+            self.logger.log(command, empty_response)
+            return empty_response
+        actionStr = parts[0]
+
+        try:
+            action = CommandAction(actionStr)
+        except ValueError:
+            unknown_response = CommandResponse(CommandStatus.ERROR, "UNKNOWN COMMAND")
+            self.logger.log(command, unknown_response)
+            return unknown_response
+
+        handler = self.command_handler.get(action)
+
+        response: CommandResponse = handler(parts)  # execute
+        self.logger.log(command, response)  # log
+
+        return response
+
     def queue_command(self, command: str) -> CommandResponse:
         if not command.strip():
-            return CommandResponse(CommandStatus.ERROR, "EMPTY COMMAND")
+            emptyResponse = CommandResponse(CommandStatus.ERROR, "EMPTY COMMAND")
+            self.logger.log(command, emptyResponse)
+            return emptyResponse
         self.command_queue.append(command)
-        response = CommandResponse(CommandStatus.OK, f"COMMAND: {command} WAS ADDED TO QUEUE")
+        response = CommandResponse(
+            CommandStatus.OK, f"COMMAND: {command} WAS ADDED TO QUEUE"
+        )
         self.logger.log(command, response)
         return response
 
     def process_next_command(self) -> CommandResponse:
         if not self.command_queue:
-            return CommandResponse(CommandStatus.ERROR, "COMMAND QUEUE EMPTY")
-        
+            errorResponse = CommandResponse(CommandStatus.ERROR, "COMMAND QUEUE EMPTY")
+            self.logger.log("process_next_command", errorResponse)
+            return errorResponse
         command = self.command_queue.popleft()
         response = self.send_command(command)
         return response
-    
+
     def process_all_commands(self) -> list[CommandResponse]:
         listOfResponses = []
 
         if not self.command_queue:
-            return [CommandResponse(CommandStatus.ERROR, "COMMAND QUEUE EMPTY")]
+            errorResponse = CommandResponse(CommandStatus.ERROR, "COMMAND QUEUE EMPTY")
+            self.logger.log("process_all_commands", errorResponse)
+            return [errorResponse]
 
         while self.command_queue:
             listOfResponses.append(self.process_next_command())
-        
+
         return listOfResponses
 
     def get_machine_status(self):
@@ -136,25 +166,3 @@ class MachineController:
         return CommandResponse(
             CommandStatus.OK, f"TEMPERATURE SET TO: {temp} SUCCESFULLY"
         )
-
-    def send_command(self, command: str):
-        parts = command.split()
-        if len(parts) == 0:
-            empty_response = CommandResponse(CommandStatus.ERROR, "EMPTY COMMAND")
-            self.logger.log(command, empty_response)
-            return empty_response
-        actionStr = parts[0]
-        
-        try:
-            action = CommandAction(actionStr)
-        except ValueError:
-            unknown_response = CommandResponse(CommandStatus.ERROR, "UNKNOWN COMMAND")
-            self.logger.log(unknown_response.message, unknown_response)
-            return unknown_response
-
-        handler = self.command_handler.get(action)
-
-        response: CommandResponse = handler(parts)  # execute
-        self.logger.log(command, response)  # log
-
-        return response
